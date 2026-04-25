@@ -1,0 +1,58 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "create-agent-app"
+version = "0.1.0"
+description = "Vite-style scaffolding CLI for Agentic AI Python projects"
+readme = "README.md"
+requires-python = ">=3.10"
+license = "MIT"
+authors = [
+  { name = "Sai Charan" }
+]
+keywords = ["ai", "agentic-ai", "langgraph", "scaffolding", "cli", "templates"]
+classifiers = [
+  "Development Status :: 4 - Beta",
+  "Environment :: Console",
+  "Intended Audience :: Developers",
+  "Operating System :: OS Independent",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Topic :: Software Development :: Code Generators",
+  "Topic :: Scientific/Engineering :: Artificial Intelligence",
+]
+dependencies = [
+  "typer==0.24.2",
+  "questionary==2.1.1",
+  "Jinja2==3.1.6",
+  "rich==15.0.0",
+]
+
+[project.scripts]
+create-agent-app = "create_agent_app.cli:main"
+
+[project.urls]
+Homepage = "https://github.com/your-username/create-agent-app"
+Repository = "https://github.com/your-username/create-agent-app"
+Issues = "https://github.com/your-username/create-agent-app/issues"
+
+[project.optional-dependencies]
+dev = [
+  "build==1.3.0",
+  "twine==6.2.0",
+  "pytest==8.4.2",
+]
+
+[tool.setuptools]
+include-package-data = true
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["create_agent_app*"]
+
+[tool.setuptools.package-data]
+create_agent_app = ["templates/**/*.j2", "templates/**/*.txt"]
