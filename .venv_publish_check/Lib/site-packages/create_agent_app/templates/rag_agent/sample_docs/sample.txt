@@ -1,9 +1,0 @@
-Agentic AI Starter Blueprint
-
-This sample document describes a three-phase rollout for an agentic AI product.
-Phase 1 focuses on foundation setup: define agent roles, tool contracts, and safety rules.
-Phase 2 focuses on retrieval quality: ingest trusted documents, track chunk relevance, and tune top-k.
-Phase 3 focuses on production hardening: observability, evaluation loops, and incident playbooks.
-
-A reliable RAG pipeline should return grounded answers that cite retrieved context.
-When context is weak, the assistant should explicitly ask for clarification.

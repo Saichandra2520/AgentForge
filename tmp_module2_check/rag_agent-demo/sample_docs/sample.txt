@@ -1,1 +1,0 @@
-This is a sample document for RAG ingestion. Replace with your own content.
