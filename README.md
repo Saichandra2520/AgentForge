@@ -4,9 +4,7 @@ Scaffold production-ready Agentic AI Python projects in seconds.
 
 ## Quick Demo
 
-![CLI demo placeholder](https://via.placeholder.com/1200x675?text=create-agent-app+demo+GIF)
-
-Replace this placeholder with your real terminal GIF before publishing.
+![create-agent-app demo](assets/cli-demo.png)
 
 ## Install
 
