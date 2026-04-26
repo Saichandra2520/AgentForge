@@ -1,12 +1,41 @@
 # create-agent-app
 
-Scaffold production-ready Agentic AI Python projects in seconds.
+Scaffold production-ready Agentic AI projects in Python with one command.
+
+`create-agent-app` generates opinionated, extensible project templates built around LangGraph patterns, modern provider support, API-first structure, and practical defaults for real-world teams.
 
 ## Quick Demo
 
 ![create-agent-app demo](assets/cli-demo.png)
 
-## Install
+## Why create-agent-app
+
+- Production-oriented templates (not toy examples)
+- Consistent project structure across agent architectures
+- Interactive setup flow for provider and feature selection
+- Optional FastAPI backend, streaming, tests, Docker, and observability hooks
+- Ready-to-customize prompts, graph logic, tools, and config files
+
+## Supported Templates
+
+| Template | Best For | Architecture |
+|---|---|---|
+| `react_agent` | Tool-using assistants with iterative reasoning | ReAct loop with LangGraph + tool execution |
+| `rag_agent` | Grounded answers from your documents | Retrieval + grading + generation pipeline with optional guards/cache |
+| `multi_agent` | Coordinated specialist workflows | Supervisor graph orchestrating worker agents |
+| `conversational` | Alias for conversational assistants | Delegates to `react_agent` generation |
+| `hitl` | Human-in-the-loop orchestration baseline | Delegates to `multi_agent` generation |
+
+## Supported LLM Providers
+
+- Groq
+- Gemini
+- Azure OpenAI
+- Ollama
+
+Provider credentials are configured via generated `.env` files.
+
+## Installation
 
 ```bash
 pip install create-agent-app
@@ -15,7 +44,7 @@ pip install create-agent-app
 For local development:
 
 ```bash
-pip install -e .
+pip install -e .[dev]
 ```
 
 ## Usage
@@ -24,43 +53,94 @@ pip install -e .
 create-agent-app my-agent-project
 ```
 
-The CLI prompts for:
-- template (`single_agent`, `multi_agent`, `rag_agent`)
-- LLM provider (Groq, Gemini, Azure OpenAI, Ollama)
-- model name (provider-specific)
+Optional output directory:
 
-Then it generates a complete project folder and prints next steps.
+```bash
+create-agent-app my-agent-project --output ./workspace
+```
 
-## Template Comparison
+The CLI prompts you to configure:
 
-| Template | Best For | Generated Architecture |
-|---|---|---|
-| `single_agent` | One assistant with tool-calling | LangGraph single-node loop + ToolNode |
-| `multi_agent` | Staged workflows (research + writing) | Supervisor + worker agents (researcher, writer) |
-| `rag_agent` | Document-grounded answers | ChromaDB + local embeddings + retriever tool + agent |
+- Template type
+- LLM provider
+- API backend and streaming support
+- Pre-installed tools
+- RAG options (semantic cache and security guards)
+- Optional features (Docker, tests, observability, agent description)
 
-## LLM Provider Setup
+## What Gets Generated
 
-Set values in the generated `.env` file:
+Each project includes:
 
-| Provider | Required Keys |
-|---|---|
-| Groq | `GROQ_API_KEY`, `LLM_PROVIDER=groq`, `MODEL_NAME=...` |
-| Gemini | `GEMINI_API_KEY`, `LLM_PROVIDER=gemini`, `MODEL_NAME=...` |
-| Azure OpenAI | `AZURE_OPENAI_API_KEY`, `AZURE_OPENAI_ENDPOINT`, optional `AZURE_OPENAI_DEPLOYMENT`, `LLM_PROVIDER=azure`, `MODEL_NAME=...` |
-| Ollama | `OLLAMA_BASE_URL` (default `http://localhost:11434`), `LLM_PROVIDER=ollama`, `MODEL_NAME=...` |
+- A runnable `main.py` entrypoint
+- Config-first setup (`config.yaml`, `.env.example`)
+- Template-specific modules (`agent/`, `rag/`, `agents/`, `tools/`, etc.)
+- Optional `api/` routes and schemas
+- Optional `tests/`
+- Optional Docker artifacts
+
+The generator also initializes git and creates a `data/` directory scaffold.
+
+## Feature Flags (Template Rendering)
+
+The generator conditionally includes files based on selected options:
+
+- `include_api`: includes or skips `api/`
+- `include_tests`: includes or skips `tests/`
+- `include_docker`: includes or skips Docker artifacts
+- `include_guards` (RAG): includes or skips `security/`
+- `include_semantic_cache` (RAG): includes or skips semantic cache template
+
+## Example Developer Workflow
+
+```bash
+create-agent-app customer-support-agent
+cd customer-support-agent
+python -m venv .venv
+source .venv/bin/activate  # Windows: .venv\Scripts\activate
+pip install -r requirements.txt
+cp .env.example .env
+# Add provider credentials
+python main.py
+```
+
+## Project Quality Notes
+
+- Templates are generated from Jinja files under `create_agent_app/templates/`
+- Shared and template-specific rendering are centralized in `create_agent_app/generator.py`
+- Generation summary is displayed in rich tables for clarity
+- Templates are structured for straightforward extension, not lock-in
 
 ## Development
 
 ```bash
 pip install -e .[dev]
 python -m build
-twine check dist/*
+python -m twine check dist/*
+```
+
+## Publishing to PyPI
+
+If a version already exists on PyPI, bump `project.version` in `pyproject.toml` before upload.
+
+```bash
+python -m build
+twine upload dist/*
+```
+
+Optional:
+
+```bash
+twine upload --skip-existing dist/*
 ```
 
 ## Contributing
 
 1. Fork the repository.
-2. Create a feature branch.
-3. Run local checks and verify generated templates.
-4. Open a pull request with a clear summary and sample scaffold output.
+2. Create a branch for your change.
+3. Validate generated templates locally.
+4. Submit a pull request with a clear summary and sample output.
+
+## License
+
+MIT
