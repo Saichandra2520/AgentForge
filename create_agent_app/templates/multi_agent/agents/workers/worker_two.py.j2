@@ -1,0 +1,32 @@
+from agents.workers.base_worker import BaseWorker
+from core.llm import get_llm
+
+
+class WriterWorker(BaseWorker):
+    name = "writer"
+    description = "Synthesizes worker outputs into a clean final response"
+
+    def run(self, task: str, context: dict) -> str:
+        worker_outputs = context.get("worker_outputs", {})
+        research = worker_outputs.get("researcher", "")
+        if not research:
+            return "Research input missing. Ask researcher worker to run first."
+
+        prompt = f"""You are a senior technical writer.
+
+Original task:
+{task}
+
+Research notes:
+{research}
+
+Write a clear, accurate final response with:
+- concise summary
+- key details
+- practical next steps (if relevant)
+"""
+        try:
+            response = get_llm().invoke(prompt)
+            return response.content.strip()
+        except Exception:
+            return research

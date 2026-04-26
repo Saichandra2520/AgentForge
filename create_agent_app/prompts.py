@@ -1,104 +1,172 @@
 ﻿
 """Interactive prompt flow for create-agent-app."""
 
-from pathlib import Path
-import re
-
+from questionary import Choice
 import questionary
+from rich.console import Console
+from rich.table import Table
 
-from .config import ProjectConfig
-
-PROJECT_NAME_PATTERN = re.compile(r"^[A-Za-z0-9-]+$")
-MAX_PROJECT_NAME_LENGTH = 50
-
-TEMPLATE_CHOICES: list[questionary.Choice] = [
-    questionary.Choice("Single Agent", value="single_agent"),
-    questionary.Choice("Multi-Agent Supervisor", value="multi_agent"),
-    questionary.Choice("RAG Agent", value="rag_agent"),
-]
-
-PROVIDER_CHOICES: list[questionary.Choice] = [
-    questionary.Choice("Groq", value="groq"),
-    questionary.Choice("Gemini", value="gemini"),
-    questionary.Choice("Azure OpenAI", value="azure"),
-    questionary.Choice("Ollama", value="ollama"),
-]
-
-MODEL_CHOICES: dict[str, list[questionary.Choice]] = {
-    "groq": [
-        questionary.Choice("llama-3.3-70b-versatile", value="llama-3.3-70b-versatile"),
-        questionary.Choice("llama-3.1-8b-instant", value="llama-3.1-8b-instant"),
-        questionary.Choice("mixtral-8x7b-32768", value="mixtral-8x7b-32768"),
-    ],
-    "gemini": [
-        questionary.Choice("gemini-2.5-pro", value="gemini-2.5-pro"),
-        questionary.Choice("gemini-2.5-flash", value="gemini-2.5-flash"),
-        questionary.Choice("gemini-1.5-pro", value="gemini-1.5-pro"),
-    ],
-    "azure": [
-        questionary.Choice("gpt-4o", value="gpt-4o"),
-        questionary.Choice("gpt-4.1", value="gpt-4.1"),
-        questionary.Choice("gpt-4o-mini", value="gpt-4o-mini"),
-    ],
-    "ollama": [
-        questionary.Choice("llama3.1", value="llama3.1"),
-        questionary.Choice("qwen2.5", value="qwen2.5"),
-        questionary.Choice("mistral", value="mistral"),
-    ],
-}
+from .config import ProjectConfig, LLMProvider, TemplateType, VectorStore
 
 
-def _validate_project_name(value: str) -> bool | str:
-    if not value:
-        return "Project name is required."
-    if len(value) > MAX_PROJECT_NAME_LENGTH:
-        return f"Project name must be {MAX_PROJECT_NAME_LENGTH} characters or fewer."
-    if not PROJECT_NAME_PATTERN.fullmatch(value):
-        return "Use only letters, numbers, and hyphens (no spaces or special characters)."
-    return True
+def run_prompts() -> ProjectConfig:
+    """Run the interactive setup flow and return a ProjectConfig."""
+    console = Console()
 
+    # REQUIRED QUESTIONS
 
-def _ask_required_text(message: str, default: str | None = None) -> str:
-    result = questionary.text(message, default=default, validate=_validate_project_name).ask()
-    if result is None:
-        raise KeyboardInterrupt("Prompt cancelled by user.")
-    return result
+    # 1. project_name
+    project_name = questionary.text(
+        "What is your project name?",
+        validate=lambda x: len(x.strip()) > 0
+    ).ask()
 
+    # 2. template
+    template = questionary.select(
+        "Which agent template?",
+        choices=[
+            Choice("ReAct Agent — reasoning + tool use loop", "react_agent"),
+            Choice("RAG Agent — document Q&A with retrieval", "rag_agent"),
+            Choice("Multi-Agent Supervisor — orchestrator + workers", "multi_agent"),
+            Choice("Conversational Agent — persistent memory", "conversational"),
+            Choice("Human-in-the-Loop — agent pauses for approval", "hitl"),
+        ]
+    ).ask()
 
-def _ask_choice(message: str, choices: list[questionary.Choice]) -> str:
-    result = questionary.select(message, choices=choices).ask()
-    if result is None:
-        raise KeyboardInterrupt("Prompt cancelled by user.")
-    return result
+    # 3. llm_provider
+    llm_provider = questionary.select(
+        "Which LLM provider?",
+        choices=[
+            Choice("Groq (free tier — recommended)", "groq"),
+            Choice("Google Gemini (free tier)", "gemini"),
+            Choice("Azure OpenAI", "azure"),
+            Choice("Ollama (local, fully free)", "ollama"),
+        ]
+    ).ask()
 
+    # 4. include_api
+    include_api = questionary.confirm(
+        "Include FastAPI backend?",
+        default=True
+    ).ask()
 
-def _validate_provider_model(llm_provider: str, model_name: str) -> None:
-    valid_models = {choice.value for choice in MODEL_CHOICES.get(llm_provider, [])}
-    if model_name not in valid_models:
-        valid_display = ", ".join(sorted(valid_models)) or "none"
-        raise ValueError(
-            f"Model '{model_name}' is not valid for provider '{llm_provider}'. "
-            f"Supported models: {valid_display}"
-        )
+    # 5. include_streaming (ONLY ASK if include_api is True)
+    include_streaming = True
+    if include_api:
+        include_streaming = questionary.confirm(
+            "Include streaming support?",
+            default=True
+        ).ask()
 
+    # 6. tools
+    tools = questionary.checkbox(
+        "Which tools to pre-install?",
+        choices=[
+            Choice("web_search", value="web_search"),
+            Choice("calculator", value="calculator"),
+            Choice("file_reader", value="file_reader"),
+        ]
+    ).ask()
+    # Ensure at least one tool is selected
+    if not tools:
+        tools = ["web_search"]
 
-def run_prompts(project_name: str | None = None, output_dir: Path | None = None) -> ProjectConfig:
-    """Collect all required scaffold configuration from CLI + interactive prompts."""
-    if project_name and _validate_project_name(project_name) is True:
-        final_project_name = project_name
+    # RAG-SPECIFIC (ONLY ASK if template == "rag_agent")
+    include_semantic_cache = False
+    include_guards = True
+    if template == "rag_agent":
+        # 7. include_semantic_cache
+        include_semantic_cache = questionary.confirm(
+            "Include semantic cache? (requires Upstash Redis free tier)",
+            default=False
+        ).ask()
+
+        # 8. include_guards
+        include_guards = questionary.confirm(
+            "Include input/output security guards?",
+            default=True
+        ).ask()
+
+    # OPTIONAL SECTION
+    # 9. Configure optional features?
+    configure_optional = questionary.confirm(
+        "Configure optional features?",
+        default=False
+    ).ask()
+
+    if configure_optional:
+        # 9a. include_docker
+        include_docker = questionary.confirm(
+            "Add Docker support?",
+            default=False
+        ).ask()
+
+        # 9b. include_tests
+        include_tests = questionary.confirm(
+            "Scaffold test files?",
+            default=True
+        ).ask()
+
+        # 9c. include_observability
+        include_observability = questionary.confirm(
+            "Add Langfuse observability?",
+            default=False
+        ).ask()
+
+        # 9d. agent_description
+        agent_description = questionary.text(
+            "Describe your agent in one line:",
+            default="A helpful AI assistant"
+        ).ask()
     else:
-        final_project_name = _ask_required_text("Project name:", default=project_name)
+        include_docker = False
+        include_tests = True
+        include_observability = False
+        agent_description = "A helpful AI assistant"
 
-    template = _ask_choice("Choose a template:", TEMPLATE_CHOICES)
-    llm_provider = _ask_choice("Choose an LLM provider:", PROVIDER_CHOICES)
-    model_name = _ask_choice("Choose a model:", MODEL_CHOICES[llm_provider])
-    _validate_provider_model(llm_provider, model_name)
-
-    base_dir = output_dir or Path.cwd()
-    return ProjectConfig(
-        project_name=final_project_name,
-        template=template,
-        llm_provider=llm_provider,
-        model_name=model_name,
-        output_dir=base_dir / final_project_name,
+    # Build the ProjectConfig
+    config = ProjectConfig(
+        project_name=project_name,
+        template=TemplateType(template),
+        llm_provider=LLMProvider(llm_provider),
+        include_api=include_api,
+        include_streaming=include_streaming,
+        include_docker=include_docker,
+        include_tests=include_tests,
+        include_observability=include_observability,
+        include_semantic_cache=include_semantic_cache,
+        include_guards=include_guards,
+        agent_description=agent_description,
+        tools=tools,
     )
+
+    # Print summary table using rich
+    _print_summary_table(console, config)
+
+    return config
+
+
+def _print_summary_table(console: Console, config: ProjectConfig) -> None:
+    """Print a rich Table summarising all choices."""
+    table = Table(title="Project Configuration Summary")
+
+    table.add_column("Setting", style="cyan", no_wrap=True)
+    table.add_column("Value", style="green")
+
+    table.add_row("Project Name", config.project_name)
+    table.add_row("Template", config.template.value)
+    table.add_row("LLM Provider", config.llm_provider.value)
+    table.add_row("Include API", str(config.include_api))
+    table.add_row("Include Streaming", str(config.include_streaming))
+    table.add_row("Tools", ", ".join(config.tools))
+
+    if config.template == TemplateType.RAG_AGENT:
+        table.add_row("Include Semantic Cache", str(config.include_semantic_cache))
+        table.add_row("Include Security Guards", str(config.include_guards))
+
+    table.add_row("Include Docker", str(config.include_docker))
+    table.add_row("Include Tests", str(config.include_tests))
+    table.add_row("Include Observability", str(config.include_observability))
+    table.add_row("Agent Description", config.agent_description)
+
+    console.print(table)

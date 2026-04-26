@@ -1,0 +1,56 @@
+# ============================================================
+# security/input_guard.py — Injection detection + domain filter
+# CUSTOMISE: Add blocked phrases → INJECTION_PATTERNS list
+# CUSTOMISE: Change domain scope → config.yaml → guards.domain_description
+# DISABLE: config.yaml → guards.input_guard: false
+# ============================================================
+from dataclasses import dataclass
+from core.config import guards_config
+from core.llm import get_cheap_llm
+from agent.prompts import DOMAIN_CHECK_PROMPT
+
+INJECTION_PATTERNS = [
+    "ignore previous instructions",
+    "disregard your system prompt",
+    "you are now",
+    "act as if",
+    "pretend you are",
+    "forget your instructions",
+    "new persona",
+    "jailbreak",
+    "ignore all previous",
+    "bypass your",
+]
+
+
+@dataclass
+class GuardResult:
+    blocked: bool
+    reason: str = ""
+
+
+def run_input_guard(query: str) -> GuardResult:
+    if not guards_config.get("input_guard", True):
+        return GuardResult(blocked=False)
+
+    query_lower = query.lower()
+    for pattern in INJECTION_PATTERNS:
+        if pattern in query_lower:
+            return GuardResult(blocked=True, reason=f"Injection attempt detected: '{pattern}'")
+
+    if guards_config.get("domain_filter", True):
+        try:
+            domain = guards_config.get("domain_description", "general questions")
+            llm = get_cheap_llm()
+            result = llm.invoke(
+                DOMAIN_CHECK_PROMPT.format(query=query, domain=domain)
+            )
+            if "OUT_OF_SCOPE" in result.content.strip().upper():
+                return GuardResult(
+                    blocked=True,
+                    reason="This query is outside the scope of this assistant.",
+                )
+        except Exception:
+            pass
+
+    return GuardResult(blocked=False)

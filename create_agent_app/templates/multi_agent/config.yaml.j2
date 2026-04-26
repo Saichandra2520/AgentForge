@@ -1,0 +1,17 @@
+# ============================================================
+# {{ project_name }} - Agent Configuration
+# ============================================================
+
+llm:
+  provider: {{ llm_provider }}
+  model: {% if llm_provider == 'groq' %}llama3-8b-8192{% elif llm_provider == 'gemini' %}gemini-1.5-flash{% elif llm_provider == 'azure' %}gpt-4o{% else %}llama3{% endif %}
+  temperature: 0.0
+
+supervisor:
+  max_iterations: 5
+
+api:
+  cors_origins: ["*"]
+
+observability:
+  langfuse: {{ include_observability | lower }}

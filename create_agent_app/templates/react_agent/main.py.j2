@@ -1,0 +1,40 @@
+from core.validator import validate_on_startup
+import uvicorn
+from langchain_core.messages import HumanMessage, AIMessage
+
+
+def _extract_answer(result: dict) -> str:
+    for message in reversed(result.get("messages", [])):
+        if isinstance(message, AIMessage) and message.content:
+            return message.content
+    return ""
+
+
+if __name__ == "__main__":
+    validate_on_startup()
+    {% if include_api %}
+    uvicorn.run("api.main:app", host="0.0.0.0", port=8000, reload=True)
+    {% else %}
+    from agent.graph import build_graph
+    from rich.console import Console
+
+    console = Console()
+    graph = build_graph()
+    session_id = "cli"
+
+    console.print("[bold green]{{ project_name }} is ready.[/bold green]")
+    while True:
+        query = input("\nYou: ").strip()
+        if query.lower() in ("exit", "quit"):
+            break
+
+        result = graph.invoke(
+            {
+                "messages": [HumanMessage(content=query)],
+                "session_id": session_id,
+                "iteration": 0,
+            },
+            config={"configurable": {"thread_id": session_id}},
+        )
+        print(f"\nAgent: {_extract_answer(result)}")
+    {% endif %}

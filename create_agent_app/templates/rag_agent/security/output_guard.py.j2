@@ -1,0 +1,43 @@
+# ============================================================
+# security/output_guard.py — PII redaction + citation builder
+# CUSTOMISE: Add PII patterns → PII_PATTERNS dict below
+# DISABLE: config.yaml → guards.output_guard: false
+# ============================================================
+import re
+from dataclasses import dataclass, field
+from langchain.schema import Document
+from core.config import guards_config
+
+PII_PATTERNS = {
+    "phone_in": r"[6-9]\d{9}",
+    "email": r"[\w\.\-]+@[\w\.\-]+\.\w+",
+    "pan": r"[A-Z]{5}[0-9]{4}[A-Z]{1}",
+    "aadhaar": r"\d{4}\s\d{4}\s\d{4}",
+    "credit_card": r"\d{4}[\s\-]?\d{4}[\s\-]?\d{4}[\s\-]?\d{4}",
+}
+
+
+@dataclass
+class OutputResult:
+    response: str
+    citations: list = field(default_factory=list)
+
+
+def run_output_guard(response: str, documents: list[Document]) -> OutputResult:
+    clean = response
+
+    if guards_config.get("output_guard", True):
+        for name, pattern in PII_PATTERNS.items():
+            clean = re.sub(pattern, f"[{name.upper()} REDACTED]", clean)
+
+    seen = set()
+    citations = []
+    for doc in documents:
+        meta = doc.metadata
+        citation = {k: meta[k] for k in ("source", "page") if k in meta}
+        key = str(citation)
+        if citation and key not in seen:
+            citations.append(citation)
+            seen.add(key)
+
+    return OutputResult(response=clean, citations=citations)

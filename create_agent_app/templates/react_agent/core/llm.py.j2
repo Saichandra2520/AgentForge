@@ -1,0 +1,41 @@
+from core.config import settings, llm_config
+
+
+def get_llm():
+    provider = llm_config.get("provider", settings.LLM_PROVIDER).lower()
+    temperature = llm_config.get("temperature", 0.0)
+    model = llm_config.get("model")
+
+    if provider == "groq":
+        from langchain_groq import ChatGroq
+
+        return ChatGroq(model=model or "llama3-8b-8192", temperature=temperature)
+    elif provider == "gemini":
+        from langchain_google_genai import ChatGoogleGenerativeAI
+
+        return ChatGoogleGenerativeAI(model=model or "gemini-1.5-flash", temperature=temperature)
+    elif provider == "azure":
+        from langchain_openai import AzureChatOpenAI
+
+        return AzureChatOpenAI(
+            deployment_name=settings.AZURE_OPENAI_DEPLOYMENT,
+            temperature=temperature,
+        )
+    elif provider == "ollama":
+        from langchain_ollama import ChatOllama
+
+        return ChatOllama(model=model or "llama3", base_url=settings.OLLAMA_BASE_URL)
+    else:
+        raise ValueError(
+            f"Unknown LLM provider: '{provider}'. "
+            "Check config.yaml -> llm.provider (groq | gemini | azure | ollama)"
+        )
+
+
+def get_cheap_llm():
+    provider = llm_config.get("provider", settings.LLM_PROVIDER).lower()
+    if provider == "groq":
+        from langchain_groq import ChatGroq
+
+        return ChatGroq(model="llama3-8b-8192", temperature=0.0)
+    return get_llm()

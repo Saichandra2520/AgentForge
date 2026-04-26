@@ -1,0 +1,34 @@
+from pydantic_settings import BaseSettings
+import yaml
+from pathlib import Path
+
+
+def _load_yaml() -> dict:
+    yaml_path = Path(__file__).parent.parent / "config.yaml"
+    if yaml_path.exists():
+        with open(yaml_path) as f:
+            return yaml.safe_load(f) or {}
+    return {}
+
+
+class Settings(BaseSettings):
+    LLM_PROVIDER: str = "{{ llm_provider }}"
+    GROQ_API_KEY: str = ""
+    GEMINI_API_KEY: str = ""
+    AZURE_OPENAI_API_KEY: str = ""
+    AZURE_OPENAI_ENDPOINT: str = ""
+    AZURE_OPENAI_DEPLOYMENT: str = ""
+    OLLAMA_BASE_URL: str = "http://localhost:11434"
+    {% if include_observability %}
+    LANGFUSE_PUBLIC_KEY: str = ""
+    LANGFUSE_SECRET_KEY: str = ""
+    LANGFUSE_HOST: str = "https://cloud.langfuse.com"
+    {% endif %}
+
+    class Config:
+        env_file = ".env"
+
+
+_yaml = _load_yaml()
+settings = Settings()
+llm_config = _yaml.get("llm", {"provider": "{{ llm_provider }}", "temperature": 0.0})

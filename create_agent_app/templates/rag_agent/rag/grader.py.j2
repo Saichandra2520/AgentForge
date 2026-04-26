@@ -1,0 +1,41 @@
+# ============================================================
+# rag/grader.py — CRAG relevance grader
+# CUSTOMISE: Thresholds → config.yaml → crag section
+# CUSTOMISE: Grading prompt → agent/prompts.py → GRADER_PROMPT
+# ============================================================
+import json
+from langchain.schema import Document
+from core.llm import get_cheap_llm
+from core.config import crag_config
+from agent.prompts import GRADER_PROMPT
+
+
+def grade_documents(query: str, documents: list[Document]) -> dict:
+    if not documents:
+        return {"decision": "incorrect", "score": 0.0}
+
+    llm = get_cheap_llm()
+    correct_t = crag_config.get("correct_threshold", 0.90)
+    incorrect_t = crag_config.get("incorrect_threshold", 0.50)
+
+    scores = []
+    for doc in documents:
+        try:
+            response = llm.invoke(
+                GRADER_PROMPT.format(query=query, document=doc.page_content[:1000])
+            )
+            result = json.loads(response.content)
+            scores.append(float(result.get("score", 0.5)))
+        except Exception:
+            scores.append(0.5)
+
+    avg = sum(scores) / len(scores) if scores else 0.0
+
+    if avg >= correct_t:
+        decision = "correct"
+    elif avg >= incorrect_t:
+        decision = "ambiguous"
+    else:
+        decision = "incorrect"
+
+    return {"decision": decision, "score": avg}

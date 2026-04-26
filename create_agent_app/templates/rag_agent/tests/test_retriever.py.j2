@@ -1,0 +1,15 @@
+{% if include_tests %}
+import pytest
+from pathlib import Path
+
+
+def test_ingest_and_retrieve(tmp_path):
+    from rag.ingestion import ingest
+    from rag.retriever import hybrid_retrieve
+    sample = tmp_path / "test.txt"
+    sample.write_text("LangGraph is a framework for building stateful AI agents.")
+    chunks = ingest(sample)
+    assert chunks > 0
+    results = hybrid_retrieve("What is LangGraph?")
+    assert len(results) > 0
+{% endif %}

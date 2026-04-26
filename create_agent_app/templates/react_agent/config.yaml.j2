@@ -1,0 +1,20 @@
+# ============================================================
+# {{ project_name }} - Agent Configuration
+# Change values here. No Python code changes needed.
+# For advanced changes, see CUSTOMISATION.md
+# ============================================================
+
+llm:
+  provider: {{ llm_provider }}
+  model: {% if llm_provider == 'groq' %}llama3-8b-8192{% elif llm_provider == 'gemini' %}gemini-1.5-flash{% elif llm_provider == 'azure' %}gpt-4o{% else %}llama3{% endif %}
+  temperature: 0.0
+  cheap_model: llama3-8b-8192
+
+{% if include_api %}
+api:
+  streaming: {{ include_streaming | lower }}
+  cors_origins: ["*"]
+{% endif %}
+
+observability:
+  langfuse: {{ include_observability | lower }}

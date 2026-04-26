@@ -1,0 +1,30 @@
+{% if include_api %}
+from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+from contextlib import asynccontextmanager
+from core.validator import validate_on_startup
+from api.routes import agent
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    validate_on_startup()
+    yield
+
+
+app = FastAPI(
+    title="{{ project_name }}",
+    description="{{ agent_description }}",
+    version="0.1.0",
+    lifespan=lifespan,
+)
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+app.include_router(agent.router, prefix="/api", tags=["agent"])
+{% endif %}

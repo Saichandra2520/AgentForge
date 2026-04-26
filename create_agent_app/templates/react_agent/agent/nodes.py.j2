@@ -1,0 +1,40 @@
+from langchain_core.messages import AIMessage, SystemMessage
+from agent.state import AgentState
+from agent.prompts import SYSTEM_PROMPT
+from core.llm import get_llm
+from tools.web_search import WebSearchTool
+from tools.calculator import CalculatorTool
+
+MAX_ITERATIONS = 10
+
+
+def get_tools():
+    return [
+        WebSearchTool().to_langchain_tool(),
+        CalculatorTool().to_langchain_tool(),
+    ]
+
+
+def reason_node(state: AgentState) -> dict:
+    iteration = state.get("iteration", 0)
+    if iteration >= MAX_ITERATIONS:
+        return {
+            "messages": [
+                AIMessage(
+                    content="I reached the maximum reasoning iterations. "
+                    "Please refine your question."
+                )
+            ],
+            "iteration": iteration,
+        }
+
+    try:
+        llm = get_llm().bind_tools(get_tools())
+        messages = list(state.get("messages", []))
+        response = llm.invoke([SystemMessage(content=SYSTEM_PROMPT)] + messages)
+        return {"messages": [response], "iteration": iteration + 1}
+    except Exception as e:
+        return {
+            "messages": [AIMessage(content=f"I encountered an error: {str(e)}")],
+            "iteration": iteration + 1,
+        }

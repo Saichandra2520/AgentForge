@@ -1,0 +1,34 @@
+# {{ project_name }} Customisation Guide
+
+This template is designed to be safe to edit. Start with `config.yaml` and then customize code modules only when needed.
+
+## 1) Prompt behavior
+
+- File: `agent/prompts.py`
+- Update `SYSTEM_PROMPT` for tone, persona, and task boundaries.
+
+## 2) Tools
+
+- Files: `tools/calculator.py`, `tools/web_search.py`
+- Add new tools by extending `tools/base.py` and registering them in `agent/nodes.py` (`get_tools`).
+
+## 3) ReAct loop
+
+- File: `agent/graph.py`
+- Adjust routing logic or iteration limits (`MAX_ITERATIONS`) to fit your task.
+
+## 4) LLM provider and model
+
+- File: `config.yaml`
+- Environment: `.env`
+- Runtime wiring: `core/llm.py`
+
+## 5) API mode
+
+- Files: `api/main.py`, `api/routes/agent.py`
+- Add endpoints or auth middleware as your project grows.
+
+## 6) Memory persistence
+
+- File: `memory/checkpointer.py`
+- Default DB path: `data/memory.sqlite`

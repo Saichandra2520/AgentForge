@@ -1,0 +1,9 @@
+from langgraph.checkpoint.sqlite import SqliteSaver
+from pathlib import Path
+
+DB_PATH = str(Path(__file__).parent.parent / "data" / "memory.sqlite")
+
+
+def get_checkpointer() -> SqliteSaver:
+    Path(DB_PATH).parent.mkdir(parents=True, exist_ok=True)
+    return SqliteSaver.from_conn_string(DB_PATH)

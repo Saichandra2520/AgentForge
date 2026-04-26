@@ -1,0 +1,54 @@
+from langgraph.graph import StateGraph, START, END
+from langgraph.prebuilt import ToolNode
+from agent.state import AgentState
+from agent.nodes import reason_node, get_tools, MAX_ITERATIONS
+from agent.prompts import SYSTEM_PROMPT
+from core.llm import get_llm
+from memory.checkpointer import get_checkpointer
+
+
+def _route_after_reason(state: AgentState):
+    if state.get("iteration", 0) >= MAX_ITERATIONS:
+        return END
+
+    messages = state.get("messages", [])
+    if not messages:
+        return END
+
+    last_message = messages[-1]
+    tool_calls = getattr(last_message, "tool_calls", None) or []
+    if tool_calls:
+        return "tool_node"
+    return END
+
+
+def build_graph():
+    tools = get_tools()
+    checkpointer = get_checkpointer()
+
+    try:
+        from langgraph.prebuilt import create_react_agent
+
+        return create_react_agent(
+            model=get_llm(),
+            tools=tools,
+            prompt=SYSTEM_PROMPT,
+            checkpointer=checkpointer,
+            state_schema=AgentState,
+        )
+    except Exception:
+        pass
+
+    graph = StateGraph(AgentState)
+    graph.add_node("reason_node", reason_node)
+    graph.add_node("tool_node", ToolNode(tools))
+
+    graph.add_edge(START, "reason_node")
+    graph.add_conditional_edges(
+        "reason_node",
+        _route_after_reason,
+        {"tool_node": "tool_node", END: END},
+    )
+    graph.add_edge("tool_node", "reason_node")
+
+    return graph.compile(checkpointer=checkpointer)

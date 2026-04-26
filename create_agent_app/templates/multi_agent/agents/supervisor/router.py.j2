@@ -1,0 +1,11 @@
+from agents.state import MultiAgentState
+
+FINISH_SIGNAL = "FINISH"
+WORKER_NAMES = ["researcher", "writer"]
+
+
+def route_to_worker(state: MultiAgentState) -> str:
+    next_w = state.get("next_worker", "")
+    if next_w == FINISH_SIGNAL or state.get("iteration", 0) >= 5:
+        return "finish"
+    return next_w if next_w in WORKER_NAMES else "finish"

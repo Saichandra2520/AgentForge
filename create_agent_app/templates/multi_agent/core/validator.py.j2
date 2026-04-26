@@ -1,0 +1,44 @@
+import sys
+from rich.console import Console
+from core.config import settings, llm_config
+
+console = Console()
+
+
+def validate_on_startup() -> None:
+    errors = []
+    warnings = []
+    provider = llm_config.get("provider", settings.LLM_PROVIDER).lower()
+
+    if provider == "groq" and not settings.GROQ_API_KEY:
+        errors.append(
+            "GROQ_API_KEY is missing.\n"
+            "       Fix: Add GROQ_API_KEY=your_key to .env\n"
+            "       Get free key at: https://console.groq.com"
+        )
+    if provider == "gemini" and not settings.GEMINI_API_KEY:
+        errors.append(
+            "GEMINI_API_KEY is missing.\n"
+            "       Fix: Add GEMINI_API_KEY=your_key to .env"
+        )
+    if provider == "azure" and not settings.AZURE_OPENAI_API_KEY:
+        errors.append(
+            "AZURE_OPENAI_API_KEY is missing.\n"
+            "       Fix: Add AZURE_OPENAI_API_KEY, AZURE_OPENAI_ENDPOINT, "
+            "AZURE_OPENAI_DEPLOYMENT to .env"
+        )
+    {% if include_observability %}
+    if not settings.LANGFUSE_SECRET_KEY:
+        warnings.append("LANGFUSE_SECRET_KEY missing. Observability will be skipped.")
+    {% endif %}
+
+    for error in errors:
+        console.print(f"[bold red]ERROR:[/bold red] {error}")
+    for warning in warnings:
+        console.print(f"[bold yellow]WARNING:[/bold yellow] {warning}")
+
+    if errors:
+        console.print("\n[red]Fix the errors above before starting the agent.[/red]")
+        sys.exit(1)
+
+    console.print("[bold green]All checks passed. Starting {{ project_name }}...[/bold green]")

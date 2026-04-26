@@ -1,0 +1,14 @@
+# ============================================================
+# rag/embeddings.py — Embedding model factory
+# CUSTOMISE: Change model_name below to switch embedding model
+# Uses HuggingFace local model — no API key, no cost
+# ============================================================
+from langchain_community.embeddings import HuggingFaceEmbeddings
+
+
+def get_embeddings():
+    return HuggingFaceEmbeddings(
+        model_name="all-MiniLM-L6-v2",
+        model_kwargs={"device": "cpu"},
+        encode_kwargs={"normalize_embeddings": True},
+    )

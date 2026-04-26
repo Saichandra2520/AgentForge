@@ -1,0 +1,66 @@
+{% if include_api %}
+from fastapi import APIRouter, HTTPException
+from langchain_core.messages import HumanMessage, AIMessage
+from api.schemas.request import QueryRequest, QueryResponse
+from agent.graph import build_graph
+
+router = APIRouter()
+_graph = None
+
+
+def get_graph():
+    global _graph
+    if _graph is None:
+        _graph = build_graph()
+    return _graph
+
+
+def _extract_answer(result: dict) -> str:
+    for message in reversed(result.get("messages", [])):
+        if isinstance(message, AIMessage) and message.content:
+            return message.content
+    return ""
+
+
+@router.post("/query", response_model=QueryResponse)
+async def query(request: QueryRequest):
+    try:
+        config = {"configurable": {"thread_id": request.session_id}}
+        result = get_graph().invoke(
+            {
+                "messages": [HumanMessage(content=request.query)],
+                "session_id": request.session_id,
+                "iteration": 0,
+            },
+            config=config,
+        )
+        return QueryResponse(
+            answer=_extract_answer(result),
+            session_id=request.session_id,
+        )
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+{% if include_streaming %}
+from fastapi.responses import StreamingResponse
+import json
+
+
+@router.post("/stream/query")
+async def stream_query(request: QueryRequest):
+    async def event_stream():
+        config = {"configurable": {"thread_id": request.session_id}}
+        for chunk in get_graph().stream(
+            {
+                "messages": [HumanMessage(content=request.query)],
+                "session_id": request.session_id,
+                "iteration": 0,
+            },
+            config=config,
+        ):
+            yield f"data: {json.dumps(chunk, default=str)}\\n\\n"
+
+    return StreamingResponse(event_stream(), media_type="text/event-stream")
+{% endif %}
+{% endif %}

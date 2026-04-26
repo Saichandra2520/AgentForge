@@ -1,0 +1,59 @@
+{% if include_semantic_cache %}
+# ============================================================
+# memory/semantic_cache.py — Semantic cache (Upstash Vector)
+# CUSTOMISE: Threshold → config.yaml → semantic_cache section
+# IMPORTANT: Implemented as standalone module, NOT LangChain
+# decorator — required for correct LangGraph compatibility
+# ============================================================
+from uuid import uuid4
+from core.config import settings, cache_config
+
+
+class SemanticCache:
+
+    def __init__(self):
+        from upstash_vector import Index
+        self.index = Index(
+            url=settings.UPSTASH_VECTOR_URL,
+            token=settings.UPSTASH_VECTOR_TOKEN,
+        )
+        self.threshold = cache_config.get("similarity_threshold", 0.90)
+        self.enabled = cache_config.get("enabled", True)
+
+    def get(self, query: str) -> str | None:
+        if not self.enabled:
+            return None
+        try:
+            results = self.index.query(data=query, top_k=1, include_metadata=True)
+            if results and results[0].score >= self.threshold:
+                return results[0].metadata.get("answer")
+        except Exception:
+            pass
+        return None
+
+    def set(self, query: str, answer: str) -> None:
+        if not self.enabled:
+            return
+        try:
+            self.index.upsert([(str(uuid4()), answer, {"query": query, "answer": answer})])
+        except Exception:
+            pass
+
+
+_cache_instance = None
+
+
+def get_cache() -> SemanticCache:
+    global _cache_instance
+    if _cache_instance is None:
+        _cache_instance = SemanticCache()
+    return _cache_instance
+
+{% else %}
+# Semantic cache disabled.
+# To enable: config.yaml → semantic_cache.enabled: true
+# Then add UPSTASH_VECTOR_URL and UPSTASH_VECTOR_TOKEN to .env
+
+def get_cache():
+    return None
+{% endif %}

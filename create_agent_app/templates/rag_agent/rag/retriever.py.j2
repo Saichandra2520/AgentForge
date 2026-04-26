@@ -1,11 +1,57 @@
-"""RAG retrieval helpers."""
-
-from __future__ import annotations
-
+# ============================================================
+# rag/retriever.py — Hybrid retrieval: Dense + BM25 + RRF + Reranker
+# CUSTOMISE: top_k, hybrid_weight → config.yaml → retrieval section
+# ============================================================
+from langchain.schema import Document
 from rag.vectorstore import get_vectorstore
+from rag.reranker import get_reranker
+from core.config import retrieval_config
+from rank_bm25 import BM25Okapi
+
+_bm25_index = None
+_bm25_docs: list[Document] = []
 
 
-def retrieve_context(query: str, k: int = 4) -> list[str]:
-    store = get_vectorstore()
-    docs = store.similarity_search(query, k=k)
-    return [doc.page_content for doc in docs]
+def build_bm25_index(documents: list[Document]) -> None:
+    global _bm25_index, _bm25_docs
+    _bm25_docs = documents
+    tokenized = [doc.page_content.lower().split() for doc in documents]
+    _bm25_index = BM25Okapi(tokenized)
+
+
+def hybrid_retrieve(query: str) -> list[Document]:
+    top_k = retrieval_config.get("top_k", 5)
+    hybrid_weight = retrieval_config.get("hybrid_weight", 0.7)
+    reranker_top_k = retrieval_config.get("reranker_top_k", 3)
+    fetch_k = top_k * 3
+
+    vs = get_vectorstore()
+    dense = vs.similarity_search(query, k=fetch_k)
+
+    sparse: list[Document] = []
+    if _bm25_index and _bm25_docs:
+        scores = _bm25_index.get_scores(query.lower().split())
+        top_indices = sorted(range(len(scores)), key=lambda i: scores[i], reverse=True)[:fetch_k]
+        sparse = [_bm25_docs[i] for i in top_indices]
+
+    fused = _rrf_fusion(dense, sparse)[:fetch_k]
+
+    reranker = get_reranker()
+    if reranker and fused:
+        return reranker.rerank(query, fused, top_n=reranker_top_k)
+    return fused[:reranker_top_k]
+
+
+def _rrf_fusion(dense: list, sparse: list, k: int = 60) -> list[Document]:
+    scores: dict = {}
+    doc_map: dict = {}
+    for rank, doc in enumerate(dense):
+        key = doc.page_content[:100]
+        scores[key] = scores.get(key, 0) + 1 / (k + rank + 1)
+        doc_map[key] = doc
+    for rank, doc in enumerate(sparse):
+        key = doc.page_content[:100]
+        scores[key] = scores.get(key, 0) + 1 / (k + rank + 1)
+        doc_map[key] = doc
+    sorted_keys = sorted(scores, key=lambda x: scores[x], reverse=True)
+    return [doc_map[k] for k in sorted_keys]

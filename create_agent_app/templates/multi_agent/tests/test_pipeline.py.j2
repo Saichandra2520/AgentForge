@@ -1,0 +1,33 @@
+from unittest.mock import patch
+from langchain_core.messages import HumanMessage
+
+
+class _MockWorker:
+    def __init__(self, value):
+        self.value = value
+
+    def run(self, task: str, context: dict) -> str:
+        return self.value
+
+
+def test_pipeline_runs_and_finishes():
+    from agents.supervisor.graph import build_graph
+
+    with patch("agents.supervisor.nodes.ResearcherWorker", return_value=_MockWorker("research")), \
+         patch("agents.supervisor.nodes.WriterWorker", return_value=_MockWorker("final answer")):
+        graph = build_graph()
+        result = graph.invoke(
+            {
+                "task": "Explain LangGraph",
+                "session_id": "test",
+                "worker_outputs": {},
+                "next_worker": "researcher",
+                "final_answer": "",
+                "messages": [HumanMessage(content="Explain LangGraph")],
+                "iteration": 0,
+            },
+            config={"configurable": {"thread_id": "test"}},
+        )
+
+    assert "worker_outputs" in result
+    assert result.get("iteration", 0) >= 1

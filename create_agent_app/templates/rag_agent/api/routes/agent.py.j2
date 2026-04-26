@@ -1,0 +1,74 @@
+{% if include_api %}
+from fastapi import APIRouter, HTTPException
+from api.schemas.request import QueryRequest, QueryResponse
+from agent.graph import build_graph
+
+router = APIRouter()
+_graph = None
+
+
+def get_graph():
+    global _graph
+    if _graph is None:
+        _graph = build_graph()
+    return _graph
+
+
+@router.post("/query", response_model=QueryResponse)
+async def query(request: QueryRequest):
+    try:
+        config = {"configurable": {"thread_id": request.session_id}}
+        result = get_graph().invoke(
+            {
+                "query": request.query,
+                "session_id": request.session_id,
+                "retry_count": 0,
+                "guard_blocked": False,
+                "cache_hit": False,
+                "documents": [],
+                "messages": [],
+            },
+            config=config,
+        )
+        if result.get("guard_blocked"):
+            raise HTTPException(
+                status_code=400,
+                detail=result.get("guard_reason", "Query blocked by security guard"),
+            )
+        return QueryResponse(
+            answer=result.get("answer", ""),
+            citations=result.get("citations", []),
+            session_id=request.session_id,
+            cache_hit=result.get("cache_hit", False),
+        )
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+{% if include_streaming %}
+from fastapi.responses import StreamingResponse
+import json
+
+
+@router.post("/stream/query")
+async def stream_query(request: QueryRequest):
+    async def event_stream():
+        config = {"configurable": {"thread_id": request.session_id}}
+        for chunk in get_graph().stream(
+            {
+                "query": request.query,
+                "session_id": request.session_id,
+                "retry_count": 0,
+                "guard_blocked": False,
+                "cache_hit": False,
+                "documents": [],
+                "messages": [],
+            },
+            config=config,
+        ):
+            yield f"data: {json.dumps(chunk)}\n\n"
+    return StreamingResponse(event_stream(), media_type="text/event-stream")
+{% endif %}
+{% endif %}

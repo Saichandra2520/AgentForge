@@ -1,0 +1,78 @@
+import json
+from langchain_core.messages import AIMessage
+from agents.state import MultiAgentState
+from agents.supervisor.prompts import SUPERVISOR_PROMPT
+from agents.supervisor.router import FINISH_SIGNAL
+from agents.workers.worker_one import ResearcherWorker
+from agents.workers.worker_two import WriterWorker
+from core.llm import get_cheap_llm
+
+
+MAX_ITERATIONS = 5
+
+
+def _fallback_next_worker(state: MultiAgentState) -> str:
+    outputs = state.get("worker_outputs", {})
+    if "researcher" not in outputs:
+        return "researcher"
+    if "writer" not in outputs:
+        return "writer"
+    return FINISH_SIGNAL
+
+
+def supervisor_node(state: MultiAgentState) -> dict:
+    next_iteration = state.get("iteration", 0) + 1
+    outputs = dict(state.get("worker_outputs", {}))
+
+    if next_iteration >= MAX_ITERATIONS:
+        final_answer = outputs.get("writer") or outputs.get("researcher") or ""
+        return {
+            "next_worker": FINISH_SIGNAL,
+            "iteration": next_iteration,
+            "final_answer": final_answer,
+            "messages": [AIMessage(content="Supervisor finished due to iteration limit.")],
+        }
+
+    prompt = SUPERVISOR_PROMPT.format(task=state.get("task", ""), worker_outputs=outputs)
+
+    try:
+        response = get_cheap_llm().invoke(prompt)
+        text = response.content.strip()
+        if text.startswith("```"):
+            text = text.strip("`")
+            text = text.replace("json", "", 1).strip()
+        decision = json.loads(text).get("next_worker", _fallback_next_worker(state))
+    except Exception:
+        decision = _fallback_next_worker(state)
+
+    update = {
+        "next_worker": decision,
+        "iteration": next_iteration,
+        "messages": [AIMessage(content=f"Supervisor routed to: {decision}")],
+    }
+
+    if decision == FINISH_SIGNAL:
+        update["final_answer"] = outputs.get("writer") or outputs.get("researcher") or ""
+
+    return update
+
+
+def researcher_node(state: MultiAgentState) -> dict:
+    outputs = dict(state.get("worker_outputs", {}))
+    content = ResearcherWorker().run(state.get("task", ""), state)
+    outputs["researcher"] = content
+    return {
+        "worker_outputs": outputs,
+        "messages": [AIMessage(content=f"[researcher]\n{content}")],
+    }
+
+
+def writer_node(state: MultiAgentState) -> dict:
+    outputs = dict(state.get("worker_outputs", {}))
+    content = WriterWorker().run(state.get("task", ""), state)
+    outputs["writer"] = content
+    return {
+        "worker_outputs": outputs,
+        "final_answer": content,
+        "messages": [AIMessage(content=f"[writer]\n{content}")],
+    }

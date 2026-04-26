@@ -1,0 +1,33 @@
+from typing import TypedDict, Annotated, List
+from langgraph.graph.message import add_messages
+
+
+class RAGState(TypedDict):
+    # Input
+    query: str                         # Original user query
+    session_id: str                    # For memory namespacing
+
+    # Routing
+    route: str                         # 'direct' | 'retrieve' | 'web_search'
+
+    # Retrieval
+    documents: List[dict]              # Retrieved documents with metadata
+    retry_count: int                   # CRAG retry counter
+
+    # CRAG grading
+    crag_decision: str                 # 'correct' | 'ambiguous' | 'incorrect'
+    crag_score: float                  # Average relevance score 0.0-1.0
+
+    # Generation
+    answer: str                        # Final generated response
+    citations: List[dict]              # Source citations
+
+    # Guards
+    guard_blocked: bool                # True if input guard blocked the query
+    guard_reason: str                  # Why query was blocked
+
+    # Cache
+    cache_hit: bool                    # True if semantic cache returned result
+
+    # Conversation
+    messages: Annotated[list, add_messages]  # Full conversation history

@@ -1,0 +1,19 @@
+# ============================================================
+# tools/document_loader.py — Supported file type loader
+# CUSTOMISE: Add new file types with elif blocks below
+# ============================================================
+from pathlib import Path
+from langchain.schema import Document
+
+SUPPORTED_TYPES = {".pdf", ".txt", ".docx"}
+
+
+def load_document(file_path: Path) -> list[Document]:
+    suffix = file_path.suffix.lower()
+    if suffix not in SUPPORTED_TYPES:
+        raise ValueError(
+            f"Unsupported file type: {suffix}. "
+            f"Supported: {', '.join(SUPPORTED_TYPES)}"
+        )
+    from rag.ingestion import load_document as _load
+    return _load(file_path)

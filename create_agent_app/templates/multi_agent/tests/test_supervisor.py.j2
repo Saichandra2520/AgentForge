@@ -1,0 +1,16 @@
+from agents.supervisor.router import route_to_worker
+
+
+def test_route_to_researcher():
+    state = {"next_worker": "researcher", "iteration": 0}
+    assert route_to_worker(state) == "researcher"
+
+
+def test_route_to_finish_on_signal():
+    state = {"next_worker": "FINISH", "iteration": 0}
+    assert route_to_worker(state) == "finish"
+
+
+def test_route_to_finish_on_iteration_limit():
+    state = {"next_worker": "researcher", "iteration": 5}
+    assert route_to_worker(state) == "finish"

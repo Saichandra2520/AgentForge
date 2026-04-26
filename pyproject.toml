@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "create-agent-app"
 version = "0.1.1"
-description = "Vite-style scaffolding CLI for Agentic AI Python projects"
+description = "Vite-style CLI scaffolder for production-grade Agentic AI projects in Python"
 readme = "README.md"
 requires-python = ">=3.10"
 license = {text = "MIT"}
@@ -14,7 +14,7 @@ authors = [
 ]
 keywords = ["ai", "agentic-ai", "langgraph", "scaffolding", "cli", "templates"]
 classifiers = [
-  "Development Status :: 4 - Beta",
+  "Development Status :: 3 - Alpha",
   "Environment :: Console",
   "Intended Audience :: Developers",
   "License :: OSI Approved :: MIT License",
@@ -29,15 +29,18 @@ classifiers = [
 dependencies = [
   "typer>=0.12.0",
   "questionary>=2.0.1",
-  "Jinja2>=3.1.4",
+  "jinja2>=3.1.4",
+  "pyyaml>=6.0.1",
   "rich>=13.7.0",
+  "click>=8.1.7",
 ]
 
 [project.scripts]
-create-agent-app = "create_agent_app.cli:main"
+create-agent-app = "create_agent_app.cli:app"
 
 [project.urls]
-Homepage = "https://github.com/Saichandra2520/create-agent-app"
+Homepage = "https://github.com/Saichandra2520/agentforge"
+Documentation = "https://github.com/Saichandra2520/agentforge#readme"
 Repository = "https://github.com/Saichandra2520/create-agent-app"
 Issues = "https://github.com/Saichandra2520/create-agent-app/issues"
 

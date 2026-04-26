@@ -1,22 +1,35 @@
-"""Local runner for the multi-agent supervisor template."""
-
-from __future__ import annotations
-
-from agents.supervisor import run_supervisor_workflow
-
-
-def main() -> None:
-    print("Multi-Agent Supervisor CLI is ready. Type 'exit' to quit.")
-    while True:
-        task = input("\\nTask: ").strip()
-        if task.lower() in {"exit", "quit"}:
-            print("Goodbye")
-            break
-        if not task:
-            continue
-        answer = run_supervisor_workflow(task)
-        print(f"\\nFinal Answer:\n{answer}")
+from core.validator import validate_on_startup
+import uvicorn
+from langchain_core.messages import HumanMessage
 
 
 if __name__ == "__main__":
-    main()
+    validate_on_startup()
+    {% if include_api %}
+    uvicorn.run("api.main:app", host="0.0.0.0", port=8000, reload=True)
+    {% else %}
+    from agents.supervisor.graph import build_graph
+
+    graph = build_graph()
+    session_id = "cli"
+
+    print("{{ project_name }} is ready.")
+    while True:
+        query = input("\nYou: ").strip()
+        if query.lower() in ("exit", "quit"):
+            break
+
+        result = graph.invoke(
+            {
+                "task": query,
+                "session_id": session_id,
+                "worker_outputs": {},
+                "next_worker": "",
+                "final_answer": "",
+                "messages": [HumanMessage(content=query)],
+                "iteration": 0,
+            },
+            config={"configurable": {"thread_id": session_id}},
+        )
+        print(f"\nAgent: {result.get('final_answer', '')}")
+    {% endif %}

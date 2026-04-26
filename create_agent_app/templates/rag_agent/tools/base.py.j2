@@ -1,0 +1,11 @@
+from abc import ABC, abstractmethod
+from langchain.schema import Document
+
+
+class BaseTool(ABC):
+    name: str = ""
+    description: str = ""
+
+    @abstractmethod
+    def run(self, query: str) -> list[Document]:
+        pass

@@ -1,0 +1,59 @@
+# Customisation Guide — {{ project_name }}
+# Find your goal and follow the arrow.
+
+## LLM PROVIDER
+I want to switch LLM provider
+  → config.yaml → llm.provider (groq | gemini | azure | ollama)
+  → .env → add the new provider's API key (see .env.example)
+
+I want to change the model
+  → config.yaml → llm.model
+
+{% if template == 'rag_agent' %}
+## RETRIEVAL
+I want to retrieve more documents
+  → config.yaml → retrieval.top_k (increase, 5-20 recommended)
+
+I want retrieval to match exact keywords better
+  → config.yaml → retrieval.hybrid_weight (decrease toward 0.0)
+
+I want to swap ChromaDB for Qdrant
+  → rag/vectorstore.py → change provider in get_vectorstore()
+  → .env → add QDRANT_URL and QDRANT_API_KEY
+
+## CRAG GRADING
+The agent falls back to web search too often
+  → config.yaml → crag.incorrect_threshold (decrease toward 0.3)
+
+The agent is accepting bad documents
+  → config.yaml → crag.correct_threshold (increase toward 0.95)
+
+I want to change how documents are graded
+  → agent/prompts.py → GRADER_PROMPT
+
+{% if include_guards %}
+## SECURITY
+I want to add a new phrase to block
+  → security/input_guard.py → INJECTION_PATTERNS list
+
+I want to redact a new type of PII
+  → security/output_guard.py → PII_PATTERNS dict
+
+I want to change the agent's allowed topic scope
+  → config.yaml → guards.domain_description
+{% endif %}
+
+{% if include_semantic_cache %}
+## SEMANTIC CACHE
+Cache is returning wrong answers for similar questions
+  → config.yaml → semantic_cache.similarity_threshold (increase toward 0.95)
+
+I want to disable caching
+  → config.yaml → semantic_cache.enabled: false
+{% endif %}
+{% endif %}
+
+## OBSERVABILITY
+I want to enable Langfuse tracing
+  → config.yaml → observability.langfuse: true
+  → .env → add LANGFUSE_PUBLIC_KEY and LANGFUSE_SECRET_KEY

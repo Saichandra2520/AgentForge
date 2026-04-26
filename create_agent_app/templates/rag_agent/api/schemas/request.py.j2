@@ -1,0 +1,14 @@
+from pydantic import BaseModel
+from typing import List
+
+
+class QueryRequest(BaseModel):
+    query: str
+    session_id: str = "default"
+
+
+class QueryResponse(BaseModel):
+    answer: str
+    citations: List[dict] = []
+    session_id: str
+    cache_hit: bool = False

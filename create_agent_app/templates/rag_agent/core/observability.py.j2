@@ -1,0 +1,18 @@
+{% if include_observability %}
+from core.config import settings
+
+
+def get_langfuse_handler():
+    try:
+        from langfuse.callback import CallbackHandler
+        return CallbackHandler(
+            public_key=settings.LANGFUSE_PUBLIC_KEY,
+            secret_key=settings.LANGFUSE_SECRET_KEY,
+            host=settings.LANGFUSE_HOST,
+        )
+    except Exception:
+        return None
+{% else %}
+def get_langfuse_handler():
+    return None
+{% endif %}

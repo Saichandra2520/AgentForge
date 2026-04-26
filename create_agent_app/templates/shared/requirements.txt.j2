@@ -1,12 +1,38 @@
+# Core
 langgraph>=0.2.0
-langchain>=0.2.16
-langchain-core>=0.2.38
-langchain-openai>=0.2.2
-langchain-groq>=0.2.1
-langchain-google-genai>=2.0.0
-langchain-ollama>=0.2.0
-fastapi>=0.115.0
+langchain>=0.3.0
+langchain-core>=0.3.0
+langchain-community>=0.3.0
+pydantic>=2.0.0
+pydantic-settings>=2.0.0
+python-dotenv>=1.0.0
+pyyaml>=6.0.1
+
+# API
+{% if include_api %}
+fastapi>=0.111.0
 uvicorn>=0.30.0
-python-dotenv>=1.0.1
-pydantic>=2.8.2
-typing-extensions>=4.12.2
+python-multipart>=0.0.9
+{% endif %}
+
+# LLM Provider
+{% if llm_provider == 'groq' %}langchain-groq>=0.1.9{% endif %}
+{% if llm_provider == 'gemini' %}langchain-google-genai>=1.0.0{% endif %}
+{% if llm_provider == 'azure' %}langchain-openai>=0.1.0{% endif %}
+{% if llm_provider == 'ollama' %}langchain-ollama>=0.1.0{% endif %}
+
+# RAG
+{% if template == 'rag_agent' %}
+chromadb>=0.5.0
+sentence-transformers>=3.0.0
+rank-bm25>=0.2.2
+pypdf>=4.0.0
+docx2txt>=0.8
+{% if include_semantic_cache %}upstash-vector>=0.4.0{% endif %}
+{% endif %}
+
+# Observability
+{% if include_observability %}langfuse>=2.0.0{% endif %}
+
+# Testing
+{% if include_tests %}pytest>=8.0.0{% endif %}

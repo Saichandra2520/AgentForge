@@ -1,0 +1,24 @@
+# {{ project_name }} Customisation Guide
+
+## Supervisor behavior
+
+- Update `agents/supervisor/prompts.py` to change orchestration logic.
+- Update `agents/supervisor/router.py` to add/remove workers or finish rules.
+
+## Worker behavior
+
+- `agents/workers/worker_one.py`: research strategy and source style.
+- `agents/workers/worker_two.py`: writing/synthesis structure.
+
+## Shared state
+
+- `agents/state.py` controls what data flows between supervisor and workers.
+
+## Tools
+
+- Add tools in `tools/` and call them from workers.
+
+## Runtime
+
+- Model/provider settings live in `config.yaml` and `.env`.
+- API endpoint lives in `api/routes/agent.py`.

@@ -1,26 +1,27 @@
-"""Local CLI entrypoint for RAG agent."""
-
-from __future__ import annotations
-
-from agents.rag_agent import ask_rag_agent
-from rag.ingest import ingest_documents
-
-
-def main() -> None:
-    chunks = ingest_documents()
-    print(f"Indexed {chunks} chunk(s) from sample_docs.")
-    print("RAG CLI ready. Ask about the sample docs. Type 'exit' to quit.")
-
-    while True:
-        query = input("\\nQuestion: ").strip()
-        if query.lower() in {"exit", "quit"}:
-            print("Goodbye")
-            break
-        if not query:
-            continue
-        answer = ask_rag_agent(query)
-        print(f"\\nAnswer:\n{answer}")
-
+from core.validator import validate_on_startup
+import uvicorn
 
 if __name__ == "__main__":
-    main()
+    validate_on_startup()
+    {% if include_api %}
+    uvicorn.run("api.main:app", host="0.0.0.0", port=8000, reload=True)
+    {% else %}
+    from agent.graph import build_graph
+    from rich.console import Console
+    console = Console()
+    graph = build_graph()
+    console.print("[bold green]{{ project_name }} is ready.[/bold green]")
+    while True:
+        query = input("\nYou: ").strip()
+        if query.lower() in ("exit", "quit"):
+            break
+        result = graph.invoke({
+            "query": query, "session_id": "cli", "retry_count": 0,
+            "guard_blocked": False, "cache_hit": False,
+            "documents": [], "messages": [],
+        })
+        if result.get("guard_blocked"):
+            print(f"Blocked: {result.get('guard_reason')}")
+        else:
+            print(f"\nAgent: {result.get('answer', '')}")
+    {% endif %}

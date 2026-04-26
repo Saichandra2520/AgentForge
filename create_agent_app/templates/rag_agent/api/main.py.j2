@@ -1,31 +1,32 @@
-"""FastAPI app for the generated RAG agent."""
-
-from __future__ import annotations
-
+{% if include_api %}
 from fastapi import FastAPI
-from pydantic import BaseModel
-
-from agents.rag_agent import ask_rag_agent
-from rag.ingest import ingest_documents
-
-app = FastAPI(title="{{ project_name }} API")
+from fastapi.middleware.cors import CORSMiddleware
+from contextlib import asynccontextmanager
+from core.validator import validate_on_startup
+from api.routes import agent, ingest, health
 
 
-class InvokeRequest(BaseModel):
-    query: str
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    validate_on_startup()
+    yield
 
 
-@app.on_event("startup")
-def startup() -> None:
-    ingest_documents()
+app = FastAPI(
+    title="{{ project_name }}",
+    description="{{ agent_description }}",
+    version="0.1.0",
+    lifespan=lifespan,
+)
 
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
-@app.get("/health")
-def health() -> dict[str, str]:
-    return {"status": "ok"}
-
-
-@app.post("/invoke")
-def invoke(payload: InvokeRequest) -> dict[str, str]:
-    answer = ask_rag_agent(payload.query)
-    return {"answer": answer}
+app.include_router(agent.router, prefix="/api", tags=["agent"])
+app.include_router(ingest.router, prefix="/api", tags=["ingest"])
+app.include_router(health.router, tags=["health"])
+{% endif %}

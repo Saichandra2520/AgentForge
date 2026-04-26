@@ -1,22 +1,17 @@
-"""Chroma vector store initialization for RAG."""
-
-from __future__ import annotations
-
+# ============================================================
+# rag/vectorstore.py — ChromaDB vector store setup
+# CUSTOMISE: To swap to Qdrant, see CUSTOMISATION.md
+# ============================================================
+from langchain_community.vectorstores import Chroma
+from rag.embeddings import get_embeddings
 from pathlib import Path
 
-from langchain_chroma import Chroma
-from langchain_huggingface import HuggingFaceEmbeddings
-
-VECTOR_DIR = Path(__file__).resolve().parent.parent / "data" / "chroma"
-EMBED_MODEL = "sentence-transformers/all-MiniLM-L6-v2"
-COLLECTION_NAME = "rag_docs"
+CHROMA_DIR = str(Path(__file__).parent.parent / "data" / "chroma")
 
 
-def get_vectorstore() -> Chroma:
-    VECTOR_DIR.mkdir(parents=True, exist_ok=True)
-    embeddings = HuggingFaceEmbeddings(model_name=EMBED_MODEL)
+def get_vectorstore():
     return Chroma(
-        collection_name=COLLECTION_NAME,
-        embedding_function=embeddings,
-        persist_directory=str(VECTOR_DIR),
+        collection_name="{{ project_slug }}_docs",
+        embedding_function=get_embeddings(),
+        persist_directory=CHROMA_DIR,
     )

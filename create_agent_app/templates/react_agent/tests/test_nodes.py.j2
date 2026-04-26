@@ -1,0 +1,44 @@
+{% if include_tests %}
+from unittest.mock import patch
+from langchain_core.messages import HumanMessage, AIMessage
+
+
+class _BoundLLM:
+    def invoke(self, _messages):
+        return AIMessage(content="Test answer")
+
+
+class _LLM:
+    def bind_tools(self, _tools):
+        return _BoundLLM()
+
+
+def test_reason_node_updates_iteration():
+    from agent.nodes import reason_node
+
+    with patch("agent.nodes.get_llm", return_value=_LLM()):
+        result = reason_node(
+            {
+                "messages": [HumanMessage(content="What is Python?")],
+                "session_id": "test",
+                "iteration": 0,
+            }
+        )
+
+    assert result["iteration"] == 1
+    assert len(result["messages"]) == 1
+
+
+def test_reason_node_honors_iteration_limit():
+    from agent.nodes import reason_node
+
+    result = reason_node(
+        {
+            "messages": [HumanMessage(content="test")],
+            "session_id": "test",
+            "iteration": 10,
+        }
+    )
+
+    assert result["iteration"] == 10
+{% endif %}

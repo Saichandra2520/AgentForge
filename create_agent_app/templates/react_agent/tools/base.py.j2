@@ -1,0 +1,14 @@
+from abc import ABC, abstractmethod
+from langchain_core.tools import Tool
+
+
+class BaseTool(ABC):
+    name: str = ""
+    description: str = ""
+
+    @abstractmethod
+    def run(self, query: str) -> str:
+        pass
+
+    def to_langchain_tool(self) -> Tool:
+        return Tool(name=self.name, description=self.description, func=self.run)

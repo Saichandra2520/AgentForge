@@ -1,0 +1,76 @@
+# ============================================================
+# agent/graph.py — LangGraph StateGraph definition
+# All nodes and conditional edges are wired here.
+# ============================================================
+from langgraph.graph import StateGraph, START, END
+from agent.state import RAGState
+from agent.nodes import (
+    input_guard_node, cache_check_node, query_router_node,
+    retrieve_node, grade_node, rewrite_node, web_search_node,
+    generate_node, output_guard_node, cache_set_node,
+)
+from memory.checkpointer import get_checkpointer
+from core.config import crag_config
+
+
+def _route_after_guard(state: RAGState) -> str:
+    return "blocked" if state.get("guard_blocked") else "continue"
+
+
+def _route_after_cache(state: RAGState) -> str:
+    return "hit" if state.get("cache_hit") else "miss"
+
+
+def _route_query(state: RAGState) -> str:
+    return state.get("route", "retrieve")
+
+
+def _route_after_grade(state: RAGState) -> str:
+    decision = state.get("crag_decision", "incorrect")
+    max_retries = crag_config.get("max_retries", 2)
+    retry_count = state.get("retry_count", 0)
+
+    if decision == "correct":
+        return "generate"
+    elif decision == "ambiguous" and retry_count <= max_retries:
+        return "rewrite"
+    else:
+        return "web_search"
+
+
+def build_graph():
+    graph = StateGraph(RAGState)
+
+    graph.add_node("input_guard", input_guard_node)
+    graph.add_node("cache_check", cache_check_node)
+    graph.add_node("query_router", query_router_node)
+    graph.add_node("retrieve", retrieve_node)
+    graph.add_node("grade", grade_node)
+    graph.add_node("rewrite", rewrite_node)
+    graph.add_node("web_search", web_search_node)
+    graph.add_node("generate", generate_node)
+    graph.add_node("output_guard", output_guard_node)
+    graph.add_node("cache_set", cache_set_node)
+
+    graph.add_edge(START, "input_guard")
+    graph.add_conditional_edges("input_guard", _route_after_guard, {
+        "blocked": END, "continue": "cache_check"
+    })
+    graph.add_conditional_edges("cache_check", _route_after_cache, {
+        "hit": END, "miss": "query_router"
+    })
+    graph.add_conditional_edges("query_router", _route_query, {
+        "direct": "generate", "retrieve": "retrieve", "web_search": "web_search"
+    })
+    graph.add_edge("retrieve", "grade")
+    graph.add_conditional_edges("grade", _route_after_grade, {
+        "generate": "generate", "rewrite": "rewrite", "web_search": "web_search"
+    })
+    graph.add_edge("rewrite", "retrieve")
+    graph.add_edge("web_search", "generate")
+    graph.add_edge("generate", "output_guard")
+    graph.add_edge("output_guard", "cache_set")
+    graph.add_edge("cache_set", END)
+
+    checkpointer = get_checkpointer()
+    return graph.compile(checkpointer=checkpointer)

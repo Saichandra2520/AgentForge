@@ -1,0 +1,44 @@
+# ============================================================
+# rag/ingestion.py — Document loading, chunking, indexing
+# CUSTOMISE: CHUNK_SIZE and CHUNK_OVERLAP below
+# CUSTOMISE: Add new file types in load_document()
+# ============================================================
+from pathlib import Path
+from langchain.schema import Document
+from langchain.text_splitter import RecursiveCharacterTextSplitter
+from rag.vectorstore import get_vectorstore
+from rag.retriever import build_bm25_index
+
+CHUNK_SIZE = 1000
+CHUNK_OVERLAP = 200
+SUPPORTED_TYPES = {".pdf", ".txt", ".docx"}
+
+
+def load_document(file_path: Path) -> list[Document]:
+    suffix = file_path.suffix.lower()
+    if suffix == ".pdf":
+        from langchain_community.document_loaders import PyPDFLoader
+        return PyPDFLoader(str(file_path)).load()
+    elif suffix == ".txt":
+        from langchain_community.document_loaders import TextLoader
+        return TextLoader(str(file_path)).load()
+    elif suffix == ".docx":
+        from langchain_community.document_loaders import Docx2txtLoader
+        return Docx2txtLoader(str(file_path)).load()
+    else:
+        raise ValueError(
+            f"Unsupported file type: {suffix}. "
+            f"Supported: {', '.join(SUPPORTED_TYPES)}"
+        )
+
+
+def ingest(file_path: Path) -> int:
+    documents = load_document(file_path)
+    splitter = RecursiveCharacterTextSplitter(
+        chunk_size=CHUNK_SIZE, chunk_overlap=CHUNK_OVERLAP
+    )
+    chunks = splitter.split_documents(documents)
+    vs = get_vectorstore()
+    vs.add_documents(chunks)
+    build_bm25_index(chunks)
+    return len(chunks)

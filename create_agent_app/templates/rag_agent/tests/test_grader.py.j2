@@ -1,0 +1,28 @@
+{% if include_tests %}
+import pytest
+from unittest.mock import patch, MagicMock
+from langchain.schema import Document
+
+
+def test_grade_relevant_document():
+    from rag.grader import grade_documents
+    docs = [Document(page_content="LangGraph builds stateful agents using graphs.")]
+    with patch("rag.grader.get_cheap_llm") as mock_llm:
+        mock_llm.return_value.invoke.return_value = MagicMock(
+            content='{"score": 0.95, "decision": "correct", "reasoning": "relevant"}'
+        )
+        result = grade_documents("What is LangGraph?", docs)
+    assert result["decision"] == "correct"
+    assert result["score"] >= 0.9
+
+
+def test_grade_irrelevant_document():
+    from rag.grader import grade_documents
+    docs = [Document(page_content="The recipe needs 2 cups of flour and 1 egg.")]
+    with patch("rag.grader.get_cheap_llm") as mock_llm:
+        mock_llm.return_value.invoke.return_value = MagicMock(
+            content='{"score": 0.05, "decision": "incorrect", "reasoning": "unrelated"}'
+        )
+        result = grade_documents("What is LangGraph?", docs)
+    assert result["decision"] == "incorrect"
+{% endif %}

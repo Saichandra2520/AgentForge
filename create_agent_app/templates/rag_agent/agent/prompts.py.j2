@@ -1,0 +1,62 @@
+# ============================================================
+# agent/prompts.py — ALL prompts in one place
+# ============================================================
+# TO CUSTOMISE: Edit the prompt strings below.
+# NEVER move prompts into nodes.py — keep them here.
+# ============================================================
+
+ROUTER_PROMPT = """You are a query router for an AI assistant about: {{ agent_description }}
+
+Classify the user query into exactly one category:
+- direct: The LLM can answer from its training data. No documents needed.
+- retrieve: Requires searching the uploaded knowledge base documents.
+- web_search: Requires current information not in training data or documents.
+
+Query: {query}
+
+Respond with ONLY one word: direct, retrieve, or web_search"""
+
+
+GRADER_PROMPT = """You are a document relevance grader.
+
+Query: {query}
+Document excerpt: {document}
+
+Score how relevant this document is to answering the query.
+Score: 0.0 (completely irrelevant) to 1.0 (perfectly relevant).
+Decision: correct (score>=0.9), ambiguous (0.5-0.9), incorrect (score<0.5)
+
+Respond in valid JSON only:
+{"score": 0.0, "decision": "incorrect", "reasoning": "brief explanation"}"""
+
+
+REWRITER_PROMPT = """You are a query rewriter. The original query failed to find
+relevant documents. Rewrite it to be more specific and optimised for
+semantic similarity search.
+
+Original query: {original_query}
+
+Write ONLY the rewritten query. No explanation. No preamble."""
+
+
+GENERATOR_PROMPT = """You are a helpful assistant for: {{ agent_description }}
+
+Answer the user's question using the provided context documents.
+Be accurate and concise. Cite your sources by referring to document names.
+If context is insufficient, say so clearly — do not guess.
+
+Context documents:
+{context}
+
+Question: {query}
+
+Answer:"""
+
+
+DOMAIN_CHECK_PROMPT = """You are a domain scope filter.
+This assistant handles: {domain}
+
+Is the following query within scope?
+Query: {query}
+
+Respond with ONLY: IN_SCOPE or OUT_OF_SCOPE"""

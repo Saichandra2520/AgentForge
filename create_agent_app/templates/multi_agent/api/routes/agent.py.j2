@@ -1,0 +1,48 @@
+from fastapi import APIRouter, HTTPException
+from langchain_core.messages import HumanMessage, AIMessage
+from api.schemas.request import QueryRequest, QueryResponse
+from agents.supervisor.graph import build_graph
+
+router = APIRouter()
+_graph = None
+
+
+def get_graph():
+    global _graph
+    if _graph is None:
+        _graph = build_graph()
+    return _graph
+
+
+def _extract_answer(result: dict) -> str:
+    if result.get("final_answer"):
+        return result.get("final_answer", "")
+    for message in reversed(result.get("messages", [])):
+        if isinstance(message, AIMessage) and message.content:
+            return message.content
+    return ""
+
+
+@router.post("/query", response_model=QueryResponse)
+async def query(request: QueryRequest):
+    try:
+        config = {"configurable": {"thread_id": request.session_id}}
+        result = get_graph().invoke(
+            {
+                "task": request.query,
+                "session_id": request.session_id,
+                "worker_outputs": {},
+                "next_worker": "",
+                "final_answer": "",
+                "messages": [HumanMessage(content=request.query)],
+                "iteration": 0,
+            },
+            config=config,
+        )
+        return QueryResponse(
+            answer=_extract_answer(result),
+            session_id=request.session_id,
+            worker_outputs=result.get("worker_outputs", {}),
+        )
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))

@@ -1,25 +1,28 @@
-"""FastAPI app for the multi-agent supervisor workflow."""
-
-from __future__ import annotations
-
 from fastapi import FastAPI
-from pydantic import BaseModel
-
-from agents.supervisor import run_supervisor_workflow
-
-app = FastAPI(title="{{ project_name }} API")
-
-
-class InvokeRequest(BaseModel):
-    task: str
+from fastapi.middleware.cors import CORSMiddleware
+from contextlib import asynccontextmanager
+from core.validator import validate_on_startup
+from api.routes import agent
 
 
-@app.get("/health")
-def health() -> dict[str, str]:
-    return {"status": "ok"}
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    validate_on_startup()
+    yield
 
 
-@app.post("/invoke")
-def invoke(payload: InvokeRequest) -> dict[str, str]:
-    answer = run_supervisor_workflow(payload.task)
-    return {"answer": answer}
+app = FastAPI(
+    title="{{ project_name }}",
+    description="{{ agent_description }}",
+    version="0.1.0",
+    lifespan=lifespan,
+)
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+app.include_router(agent.router, prefix="/api", tags=["agent"])

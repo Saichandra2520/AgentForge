@@ -1,0 +1,21 @@
+from unittest.mock import patch
+
+
+def test_researcher_worker_returns_text():
+    from agents.workers.worker_one import ResearcherWorker
+
+    with patch("agents.workers.worker_one.WebSearchTool.run", return_value="mock result"):
+        output = ResearcherWorker().run("test task", {})
+
+    assert isinstance(output, str)
+    assert len(output) > 0
+
+
+def test_writer_worker_uses_research_output():
+    from agents.workers.worker_two import WriterWorker
+
+    context = {"worker_outputs": {"researcher": "research facts"}}
+    output = WriterWorker().run("write summary", context)
+
+    assert isinstance(output, str)
+    assert len(output) > 0

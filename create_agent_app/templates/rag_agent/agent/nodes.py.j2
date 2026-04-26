@@ -1,0 +1,109 @@
+# ============================================================
+# agent/nodes.py — All LangGraph node functions
+# Each node reads from RAGState and returns a dict of updates.
+# Every LLM call is wrapped in try/except with fallback.
+# ============================================================
+from langchain_core.messages import AIMessage
+from agent.state import RAGState
+from agent.prompts import (
+    ROUTER_PROMPT, GRADER_PROMPT, REWRITER_PROMPT, GENERATOR_PROMPT
+)
+from core.llm import get_llm, get_cheap_llm
+from core.config import crag_config
+from rag.retriever import hybrid_retrieve
+from rag.grader import grade_documents
+from security.input_guard import run_input_guard
+from security.output_guard import run_output_guard
+from memory.semantic_cache import get_cache
+from tools.web_search import WebSearchTool
+
+
+def input_guard_node(state: RAGState) -> dict:
+    result = run_input_guard(state["query"])
+    return {"guard_blocked": result.blocked, "guard_reason": result.reason}
+
+
+def cache_check_node(state: RAGState) -> dict:
+    cache = get_cache()
+    if cache:
+        cached = cache.get(state["query"])
+        if cached:
+            return {"cache_hit": True, "answer": cached}
+    return {"cache_hit": False}
+
+
+def query_router_node(state: RAGState) -> dict:
+    try:
+        llm = get_cheap_llm()
+        response = llm.invoke(ROUTER_PROMPT.format(query=state["query"]))
+        route = response.content.strip().lower()
+        if route not in ("direct", "retrieve", "web_search"):
+            route = "retrieve"
+    except Exception:
+        route = "retrieve"
+    return {"route": route}
+
+
+def retrieve_node(state: RAGState) -> dict:
+    try:
+        docs = hybrid_retrieve(state["query"])
+        return {"documents": [{"content": d.page_content, "metadata": d.metadata} for d in docs]}
+    except Exception:
+        return {"documents": []}
+
+
+def grade_node(state: RAGState) -> dict:
+    from langchain.schema import Document
+    docs = [Document(page_content=d["content"], metadata=d.get("metadata", {}))
+            for d in state.get("documents", [])]
+    result = grade_documents(state["query"], docs)
+    return {
+        "crag_decision": result["decision"],
+        "crag_score": result["score"],
+        "retry_count": state.get("retry_count", 0) + 1,
+    }
+
+
+def rewrite_node(state: RAGState) -> dict:
+    try:
+        llm = get_cheap_llm()
+        response = llm.invoke(REWRITER_PROMPT.format(original_query=state["query"]))
+        return {"query": response.content.strip()}
+    except Exception:
+        return {}
+
+
+def web_search_node(state: RAGState) -> dict:
+    tool = WebSearchTool()
+    docs = tool.run(state["query"])
+    return {"documents": [{"content": d.page_content, "metadata": d.metadata} for d in docs]}
+
+
+def generate_node(state: RAGState) -> dict:
+    try:
+        context = "\n\n".join(
+            d.get("content", "") for d in state.get("documents", [])
+        )
+        llm = get_llm()
+        response = llm.invoke(
+            GENERATOR_PROMPT.format(context=context, query=state["query"])
+        )
+        return {"answer": response.content}
+    except Exception as e:
+        return {"answer": f"I encountered an error generating a response: {str(e)}"}
+
+
+def output_guard_node(state: RAGState) -> dict:
+    from langchain.schema import Document
+    docs = [Document(page_content=d["content"], metadata=d.get("metadata", {}))
+            for d in state.get("documents", [])]
+    result = run_output_guard(state.get("answer", ""), docs)
+    return {"answer": result.response, "citations": result.citations}
+
+
+def cache_set_node(state: RAGState) -> dict:
+    if not state.get("cache_hit") and state.get("answer"):
+        cache = get_cache()
+        if cache:
+            cache.set(state["query"], state["answer"])
+    return {}

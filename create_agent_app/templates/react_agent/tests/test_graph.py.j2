@@ -1,0 +1,32 @@
+{% if include_tests %}
+from unittest.mock import patch
+from langchain_core.messages import HumanMessage, AIMessage
+
+
+class _BoundLLM:
+    def invoke(self, _messages):
+        return AIMessage(content="Graph answer")
+
+
+class _LLM:
+    def bind_tools(self, _tools):
+        return _BoundLLM()
+
+
+def test_graph_returns_messages():
+    from agent.graph import build_graph
+
+    with patch("agent.nodes.get_llm", return_value=_LLM()):
+        graph = build_graph()
+        result = graph.invoke(
+            {
+                "messages": [HumanMessage(content="Hello")],
+                "session_id": "graph_test",
+                "iteration": 0,
+            },
+            config={"configurable": {"thread_id": "graph_test"}},
+        )
+
+    assert "messages" in result
+    assert len(result["messages"]) > 0
+{% endif %}

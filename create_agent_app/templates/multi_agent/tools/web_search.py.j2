@@ -1,0 +1,15 @@
+from tools.base import BaseTool
+
+
+class WebSearchTool(BaseTool):
+    name = "web_search"
+    description = "Search the web for current information"
+
+    def run(self, query: str) -> str:
+        try:
+            from langchain_community.tools import DuckDuckGoSearchResults
+
+            search = DuckDuckGoSearchResults(num_results=5)
+            return search.run(query)
+        except Exception as e:
+            return f"Web search unavailable: {str(e)}"

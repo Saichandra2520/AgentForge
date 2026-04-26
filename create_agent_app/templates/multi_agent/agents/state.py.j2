@@ -1,0 +1,12 @@
+from typing import TypedDict, Annotated
+from langgraph.graph.message import add_messages
+
+
+class MultiAgentState(TypedDict):
+    task: str
+    session_id: str
+    worker_outputs: dict
+    next_worker: str
+    final_answer: str
+    messages: Annotated[list, add_messages]
+    iteration: int

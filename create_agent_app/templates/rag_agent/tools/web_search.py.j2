@@ -1,0 +1,26 @@
+# ============================================================
+# tools/web_search.py — DuckDuckGo web search (no API key needed)
+# CUSTOMISE: Change num_results below for more/fewer results
+# ============================================================
+from langchain.schema import Document
+from tools.base import BaseTool
+
+
+class WebSearchTool(BaseTool):
+    name = "web_search"
+    description = "Search the web for current information not in the knowledge base"
+
+    def run(self, query: str) -> list[Document]:
+        try:
+            from langchain_community.tools import DuckDuckGoSearchResults
+            search = DuckDuckGoSearchResults(num_results=4)
+            results = search.run(query)
+            return [Document(
+                page_content=results,
+                metadata={"source": "web_search", "query": query}
+            )]
+        except Exception as e:
+            return [Document(
+                page_content=f"Web search unavailable: {str(e)}",
+                metadata={"source": "web_search"}
+            )]

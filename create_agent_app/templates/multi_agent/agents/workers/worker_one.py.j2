@@ -1,0 +1,35 @@
+from agents.workers.base_worker import BaseWorker
+from core.llm import get_cheap_llm
+from tools.web_search import WebSearchTool
+
+
+class ResearcherWorker(BaseWorker):
+    name = "researcher"
+    description = "Researches the task using web search and returns structured findings"
+
+    def run(self, task: str, context: dict) -> str:
+        web_result = WebSearchTool().run(task)
+        prompt = f"""You are a research analyst.
+
+Task: {task}
+
+Web search results:
+{web_result}
+
+Produce a structured research summary with sections:
+1) Key Findings
+2) Evidence Snippets
+3) Open Questions
+"""
+        try:
+            response = get_cheap_llm().invoke(prompt)
+            return response.content.strip()
+        except Exception:
+            return (
+                "Key Findings:\n"
+                f"- {web_result}\n\n"
+                "Evidence Snippets:\n"
+                "- Source details available in web result output.\n\n"
+                "Open Questions:\n"
+                "- Verify dates and figures before publication."
+            )

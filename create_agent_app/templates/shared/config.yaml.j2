@@ -1,0 +1,49 @@
+# ============================================================
+# {{ project_name }} — Agent Configuration
+# Change values here. No Python code changes needed.
+# For advanced changes, see CUSTOMISATION.md
+# ============================================================
+
+llm:
+  provider: {{ llm_provider }}
+  model: {% if llm_provider == 'groq' %}llama3-8b-8192{% elif llm_provider == 'gemini' %}gemini-1.5-flash{% elif llm_provider == 'azure' %}gpt-4o{% else %}llama3{% endif %}
+
+  temperature: 0.0
+  cheap_model: llama3-8b-8192
+
+{% if template == 'rag_agent' %}
+retrieval:
+  top_k: 5                    # Documents retrieved before reranking (5-20 recommended)
+  hybrid_weight: 0.7          # 0.0 = pure BM25 keyword, 1.0 = pure semantic
+  reranker_top_k: 3           # Documents passed to LLM after reranking
+
+crag:
+  correct_threshold: 0.90     # Above this = relevant, generate directly (0.8-0.95)
+  incorrect_threshold: 0.50   # Below this = irrelevant, web search (0.3-0.6)
+  max_retries: 2              # Max rewrite + retrieve loops before web fallback
+
+{% if include_semantic_cache %}
+semantic_cache:
+  enabled: true
+  similarity_threshold: 0.90  # Cache hit threshold (0.85 = loose, 0.95 = strict)
+  ttl_seconds: 3600           # Cache expiry in seconds
+{% endif %}
+
+{% if include_guards %}
+guards:
+  input_guard: true           # Block prompt injection attempts
+  output_guard: true          # Redact PII from responses
+  domain_filter: true         # Block out-of-scope queries
+  domain_description: |
+    Questions about the uploaded documents and their content.
+{% endif %}
+{% endif %}
+
+{% if include_api %}
+api:
+  streaming: {{ include_streaming | lower }}
+  cors_origins: ["*"]         # Restrict to your domain in production
+{% endif %}
+
+observability:
+  langfuse: {{ include_observability | lower }}

@@ -1,0 +1,28 @@
+from langgraph.graph import StateGraph, START, END
+from agents.state import MultiAgentState
+from agents.supervisor.nodes import supervisor_node, researcher_node, writer_node
+from agents.supervisor.router import route_to_worker
+from memory.checkpointer import get_checkpointer
+
+
+def build_graph():
+    graph = StateGraph(MultiAgentState)
+
+    graph.add_node("supervisor_node", supervisor_node)
+    graph.add_node("researcher", researcher_node)
+    graph.add_node("writer", writer_node)
+
+    graph.add_edge(START, "supervisor_node")
+    graph.add_conditional_edges(
+        "supervisor_node",
+        route_to_worker,
+        {
+            "researcher": "researcher",
+            "writer": "writer",
+            "finish": END,
+        },
+    )
+    graph.add_edge("researcher", "supervisor_node")
+    graph.add_edge("writer", "supervisor_node")
+
+    return graph.compile(checkpointer=get_checkpointer())
