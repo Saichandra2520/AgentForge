@@ -9,7 +9,7 @@ def get_llm():
     if provider == "groq":
         from langchain_groq import ChatGroq
 
-        return ChatGroq(model=model or "llama3-8b-8192", temperature=temperature)
+        return ChatGroq(model=model or "llama-3.3-70b-versatile", temperature=temperature)
     elif provider == "gemini":
         from langchain_google_genai import ChatGoogleGenerativeAI
 
@@ -37,5 +37,5 @@ def get_cheap_llm():
     if provider == "groq":
         from langchain_groq import ChatGroq
 
-        return ChatGroq(model="llama3-8b-8192", temperature=0.0)
+        return ChatGroq(model="llama-3.3-70b-versatile", temperature=0.0)
     return get_llm()
