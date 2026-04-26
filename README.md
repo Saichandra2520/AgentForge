@@ -6,7 +6,7 @@ Scaffold production-ready Agentic AI projects in Python with one command.
 
 ## Quick Demo
 
-![create-agent-app demo](assets/cli-demo.png)
+![create-agent-app demo](assets/agentforge_demo.gif)
 
 ## Why create-agent-app
 
