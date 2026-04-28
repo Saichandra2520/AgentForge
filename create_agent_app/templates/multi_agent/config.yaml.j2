@@ -4,7 +4,7 @@
 
 llm:
   provider: {{ llm_provider }}
-  model: {% if llm_provider == 'groq' %}llama3-8b-8192{% elif llm_provider == 'gemini' %}gemini-1.5-flash{% elif llm_provider == 'azure' %}gpt-4o{% else %}llama3{% endif %}
+  model: {% if llm_provider == 'groq' %}llama-3.3-70b-versatile{% elif llm_provider == 'gemini' %}gemini-1.5-flash{% elif llm_provider == 'azure' %}gpt-4o{% else %}llama3{% endif %}
   temperature: 0.0
 
 supervisor:

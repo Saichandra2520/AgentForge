@@ -29,7 +29,10 @@ def reason_node(state: AgentState) -> dict:
         }
 
     try:
-        llm = get_llm().bind_tools(get_tools())
+        llm = get_llm().bind_tools(
+    get_tools(),
+    tool_choice="auto"
+)
         messages = list(state.get("messages", []))
         response = llm.invoke([SystemMessage(content=SYSTEM_PROMPT)] + messages)
         return {"messages": [response], "iteration": iteration + 1}
