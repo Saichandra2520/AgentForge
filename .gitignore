@@ -5,3 +5,11 @@
 venv/
 .env
 .pytest_cache/
+build/
+dist/
+*.whl
+*.tar.gz
+.venv_cli_check/
+.venv_cli_check2/
+.venv_publish_check/
+.sixth/

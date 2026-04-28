@@ -53,10 +53,22 @@ pip install -e .[dev]
 create-agent-app my-agent-project
 ```
 
+If your shell cannot find `create-agent-app`, use:
+
+```bash
+python -m create_agent_app my-agent-project
+```
+
 Optional output directory:
 
 ```bash
 create-agent-app my-agent-project --output ./workspace
+```
+
+Alias command (equivalent):
+
+```bash
+create_agent_app my-agent-project
 ```
 
 The CLI prompts you to configure:
@@ -117,6 +129,37 @@ python main.py
 pip install -e .[dev]
 python -m build
 python -m twine check dist/*
+```
+
+## Troubleshooting (Windows)
+
+If you see:
+
+`create-agent-app : The term 'create-agent-app' is not recognized ...`
+
+then the package is usually installed, but your Python Scripts directory is not on `PATH`.
+
+Check install location:
+
+```powershell
+py -m pip show create-agent-app
+py -m site --user-base
+```
+
+Typical scripts path to add to `PATH`:
+
+`%APPDATA%\Python\Python3x\Scripts`
+
+After updating `PATH`, restart PowerShell and run:
+
+```powershell
+create-agent-app --help
+```
+
+Fallback that always works when package is installed:
+
+```powershell
+py -m create_agent_app --help
 ```
 
 ## Publishing to PyPI
