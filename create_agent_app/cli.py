@@ -66,3 +66,8 @@ def create(
 
 if __name__ == "__main__":
     app()
+
+
+def main() -> int:
+    """Console entry point used by packaging scripts."""
+    return app()
